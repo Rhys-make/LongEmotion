@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from tqdm import tqdm
 from datasets import load_from_disk
+import torch
 
 # 添加项目根目录到路径
 sys.path.append(str(Path(__file__).parent.parent))
@@ -58,13 +59,21 @@ class InferenceEngine:
         # 加载测试数据
         test_dataset = load_from_disk(str(self.data_dir / "classification" / "test"))
         
-        # 推理
+        print(f"数据集字段: {test_dataset.column_names}")
+        
+        # 推理 - 使用 context 字段，截取前512字符
         results = []
-        texts = [item['text'] for item in test_dataset]
+        texts = [item['context'][:512] for item in test_dataset]
         
         for i in tqdm(range(0, len(texts), batch_size), desc="推理中"):
             batch_texts = texts[i:i + batch_size]
             predictions = model.predict(batch_texts)
+            # 添加原始数据信息
+            for j, pred in enumerate(predictions):
+                idx = i + j
+                pred['id'] = test_dataset[idx]['id']
+                pred['Subject'] = test_dataset[idx]['Subject']
+                pred['choices'] = test_dataset[idx]['choices']
             results.extend(predictions)
         
         # 保存结果
@@ -90,9 +99,17 @@ class InferenceEngine:
         # 加载测试数据
         test_dataset = load_from_disk(str(self.data_dir / "detection" / "test"))
         
-        # 推理
+        print(f"数据集字段: {test_dataset.column_names}")
+        
+        # 推理 - text 是列表，提取第一个 context
         results = []
-        texts = [item['text'] for item in test_dataset]
+        texts = []
+        for item in test_dataset:
+            if item['text'] and isinstance(item['text'], list):
+                text = item['text'][0].get('context', '')[:512]
+            else:
+                text = ''
+            texts.append(text)
         
         for i in tqdm(range(0, len(texts), batch_size), desc="推理中"):
             batch_texts = texts[i:i + batch_size]
@@ -128,18 +145,21 @@ class InferenceEngine:
         # 加载测试数据
         test_dataset = load_from_disk(str(self.data_dir / "conversation" / "test"))
         
-        # 推理
+        print(f"数据集字段: {test_dataset.column_names}")
+        
+        # 推理 - 使用 conversation_history 字段
         results = []
         
         for item in tqdm(test_dataset, desc="推理中"):
-            context = item['context']
-            emotion = item.get('emotion', None)
+            # 使用完整对话历史的前1024字符作为上下文
+            context = item['conversation_history'][:1024]
+            emotion = None  # 数据集中没有指定情感
             
             response = model.generate_response(context, emotion)
             
             results.append({
+                'id': item['id'],
                 'context': context,
-                'emotion': emotion,
                 'response': response
             })
         
@@ -166,13 +186,25 @@ class InferenceEngine:
         # 加载测试数据
         test_dataset = load_from_disk(str(self.data_dir / "summary" / "test"))
         
-        # 推理
+        print(f"数据集字段: {test_dataset.column_names}")
+        
+        # 推理 - 合并 consultation_process 作为输入
         results = []
-        texts = [item['text'] for item in test_dataset]
+        texts = []
+        for item in test_dataset:
+            if isinstance(item['consultation_process'], list):
+                text = ' '.join(item['consultation_process'])[:1024]
+            else:
+                text = str(item['consultation_process'])[:1024]
+            texts.append(text)
         
         for i in tqdm(range(0, len(texts), batch_size), desc="推理中"):
             batch_texts = texts[i:i + batch_size]
             predictions = model.batch_generate(batch_texts, batch_size=batch_size)
+            # 添加原始数据信息
+            for j, pred in enumerate(predictions):
+                idx = i + j
+                pred['id'] = test_dataset[idx]['id']
             results.extend(predictions)
         
         # 保存结果
@@ -198,17 +230,20 @@ class InferenceEngine:
         # 加载测试数据
         test_dataset = load_from_disk(str(self.data_dir / "qa" / "test"))
         
-        # 推理
+        print(f"数据集字段: {test_dataset.column_names}")
+        
+        # 推理 - 使用 problem 和 context 字段
         results = []
         
         for item in tqdm(test_dataset, desc="推理中"):
-            question = item['question']
-            context = item['context']
+            question = item['problem']
+            context = item['context'][:512]  # 截取前512字符
             
             answer_info = model.extract_answer(question, context)
             
             results.append({
-                'question': question,
+                'problem': question,
+                'source': item.get('source', ''),
                 'context': context,
                 'answer': answer_info['answer'],
                 'confidence': answer_info['confidence']
@@ -304,7 +339,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--device",
         type=str,
-        default="cuda",
+        default="cuda" if torch.cuda.is_available() else "cpu",
         help="设备"
     )
     

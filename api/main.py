@@ -315,7 +315,7 @@ if __name__ == "__main__":
     parser.add_argument("--host", type=str, default="0.0.0.0", help="服务地址")
     parser.add_argument("--port", type=int, default=8000, help="服务端口")
     parser.add_argument("--checkpoint_dir", type=str, default="./checkpoints", help="模型目录")
-    parser.add_argument("--device", type=str, default="cuda", help="设备")
+    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="设备 (自动检测)")
     parser.add_argument("--reload", action="store_true", help="自动重载")
     
     args = parser.parse_args()

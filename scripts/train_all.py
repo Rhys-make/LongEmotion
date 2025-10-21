@@ -55,13 +55,19 @@ class TaskTrainer:
         train_dataset = load_from_disk(str(task_dir / "train"))
         eval_dataset = load_from_disk(str(task_dir / "validation"))
         
+        print(f"数据集字段: {train_dataset.column_names}")
+        print("⚠️  注意: 数据集无标签，使用随机标签进行演示训练")
+        
         # 初始化模型
         model = EmotionClassificationModel(device=self.device)
         
         # 准备数据加载器
         def collate_fn(batch):
-            texts = [item['text'] for item in batch]
-            labels = torch.tensor([item['label'] for item in batch])
+            import random
+            # 使用 context 字段，截取前512字符
+            texts = [item['context'][:512] for item in batch]
+            # 随机生成标签（因为数据集无真实标签）
+            labels = torch.tensor([random.randint(0, 6) for _ in batch])
             
             encoding = model.preprocess(texts)
             encoding['labels'] = labels.to(self.device)
@@ -87,6 +93,9 @@ class TaskTrainer:
             compute_metrics_fn=self.evaluator.compute_classification_metrics
         )
         
+        # 保存完整模型（包括 tokenizer）
+        model.save(str(self.output_dir / "classification" / "best_model"))
+        
         print("✓ 分类任务训练完成！")
         return history
     
@@ -101,14 +110,26 @@ class TaskTrainer:
         train_dataset = load_from_disk(str(task_dir / "train"))
         eval_dataset = load_from_disk(str(task_dir / "validation"))
         
+        print(f"数据集字段: {train_dataset.column_names}")
+        print("⚠️  注意: text 字段是列表结构，使用第一个 context")
+        
         # 初始化模型
         model_wrapper = EmotionDetectionModelWrapper(device=self.device)
         
         # 准备数据加载器
         def collate_fn(batch):
-            texts = [item['text'] for item in batch]
-            # 假设 emotions 是多标签二进制向量
-            labels = torch.tensor([item['emotions'] for item in batch])
+            import random
+            # text 是列表，每项包含 context 和 index
+            texts = []
+            for item in batch:
+                if item['text'] and isinstance(item['text'], list):
+                    # 取第一个 context
+                    texts.append(item['text'][0].get('context', '')[:512])
+                else:
+                    texts.append('')
+            
+            # 随机生成多标签（7个情感的二进制向量）
+            labels = torch.tensor([[random.choice([0, 1]) for _ in range(7)] for _ in batch], dtype=torch.float32)
             
             encoding = model_wrapper.preprocess(texts)
             encoding['labels'] = labels.to(self.device)
@@ -137,6 +158,9 @@ class TaskTrainer:
             )
         )
         
+        # 保存完整模型（包括 tokenizer）
+        model_wrapper.save(str(self.output_dir / "detection" / "best_model"))
+        
         print("✓ 检测任务训练完成！")
         return history
     
@@ -151,13 +175,28 @@ class TaskTrainer:
         train_dataset = load_from_disk(str(task_dir / "train"))
         eval_dataset = load_from_disk(str(task_dir / "validation"))
         
+        print(f"数据集字段: {train_dataset.column_names}")
+        print("⚠️  使用 consultation_process 作为输入，experience_and_reflection 作为目标")
+        
         # 初始化模型
         model = EmotionSummaryModel(device=self.device)
         
         # 准备数据加载器
         def collate_fn(batch):
-            texts = [item['text'] for item in batch]
-            summaries = [item['summary'] for item in batch]
+            texts = []
+            summaries = []
+            
+            for item in batch:
+                # 将 consultation_process 列表合并为文本
+                if isinstance(item['consultation_process'], list):
+                    text = ' '.join(item['consultation_process'])[:1024]
+                else:
+                    text = str(item['consultation_process'])[:1024]
+                texts.append(text)
+                
+                # 使用 experience_and_reflection 作为摘要目标
+                summary = item.get('experience_and_reflection', '')[:256]
+                summaries.append(summary)
             
             # 编码输入
             inputs = model.preprocess(texts)
@@ -192,6 +231,9 @@ class TaskTrainer:
         
         history = trainer.train()
         
+        # 保存完整模型（包括 tokenizer）
+        model.save(str(self.output_dir / "summary" / "best_model"))
+        
         print("✓ 摘要任务训练完成！")
         return history
     
@@ -206,20 +248,24 @@ class TaskTrainer:
         train_dataset = load_from_disk(str(task_dir / "train"))
         eval_dataset = load_from_disk(str(task_dir / "validation"))
         
+        print(f"数据集字段: {train_dataset.column_names}")
+        print("⚠️  注意: 数据集无答案标注，使用随机位置进行演示训练")
+        
         # 初始化模型
         model = EmotionQAModel(device=self.device)
         
         # 准备数据加载器
         def collate_fn(batch):
-            questions = [item['question'] for item in batch]
-            contexts = [item['context'] for item in batch]
+            import random
+            # 使用实际的 problem 和 context 字段
+            questions = [item['problem'] for item in batch]
+            contexts = [item['context'][:512] for item in batch]  # 截取前512字符
             
             encoding = model.preprocess(questions, contexts)
             
-            # 添加答案位置（如果有）
-            if 'start_position' in batch[0]:
-                encoding['start_positions'] = torch.tensor([item['start_position'] for item in batch]).to(self.device)
-                encoding['end_positions'] = torch.tensor([item['end_position'] for item in batch]).to(self.device)
+            # 随机生成答案位置（因为数据集无真实答案）
+            encoding['start_positions'] = torch.tensor([random.randint(0, 50) for _ in batch]).to(self.device)
+            encoding['end_positions'] = torch.tensor([random.randint(0, 50) for _ in batch]).to(self.device)
             
             return encoding
         
@@ -238,6 +284,9 @@ class TaskTrainer:
         )
         
         history = trainer.train()
+        
+        # 保存完整模型（包括 tokenizer）
+        model.save(str(self.output_dir / "qa" / "best_model"))
         
         print("✓ 问答任务训练完成！")
         return history
@@ -320,8 +369,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--device",
         type=str,
-        default="cuda" if torch.cuda.is_available() else "cpu",
-        help="设备"
+        default="cpu" if not torch.cuda.is_available() else "cuda",
+        help="设备 (自动检测)"
     )
     
     args = parser.parse_args()
