@@ -1,4 +1,4 @@
-# LongEmotion 比赛方案
+# LongEmotion 比赛方案1
 
 这是一个完整的 LongEmotion 比赛解决方案，使用 FastAPI + Hugging Face Transformers + PyTorch 实现五个情感任务。
 
