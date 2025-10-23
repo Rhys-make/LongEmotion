@@ -43,8 +43,11 @@ ENV/
 
 # Data & Models
 data/
+checkpoint/
 checkpoints/
+result/
 results/
+evaluation/
 logs/
 *.jsonl
 *.csv
