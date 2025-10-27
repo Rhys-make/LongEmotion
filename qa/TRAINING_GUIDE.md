@@ -44,7 +44,7 @@ python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
 
 ```bash
 # 下载 LongEmotion QA 测试集 + 其他训练数据集
-python scripts/qa/prepare_datasets.py
+python qa/scripts/prepare_datasets.py
 ```
 
 **可选参数：**
@@ -59,15 +59,15 @@ python scripts/qa/prepare_datasets.py \
 ```
 
 **生成的文件：**
-- `data/qa/train.jsonl` - 训练集（~15K+ 样本）
-- `data/qa/validation.jsonl` - 验证集（~1.5K+ 样本）
-- `data/qa/test.jsonl` - 测试集（来自 LongEmotion）
+- `data/train.jsonl` - 训练集（~15K+ 样本）
+- `data/validation.jsonl` - 验证集（~1.5K+ 样本）
+- `data/test.jsonl` - 测试集（来自 LongEmotion）
 
 ### 步骤 2：查看数据
 
 ```bash
 # 查看前 3 条训练数据
-head -n 3 data/qa/train.jsonl
+head -n 3 data/train.jsonl
 ```
 
 **数据格式示例：**
@@ -138,27 +138,13 @@ head -n 3 data/qa/train.jsonl
 ### 🚀 快速开始（BERT-base）
 
 ```bash
-python scripts/qa/train.py \
-  --model_name bert-base-uncased \
-  --model_type extractive \
-  --batch_size 8 \
-  --num_epochs 3 \
-  --learning_rate 3e-5
+python scripts/train.py --model_name bert-base-chinese --model_type extractive --batch_size 1 --max_length 128 --gradient_accumulation_steps 16 --num_epochs 1 --learning_rate 2e-5 --use_amp --patience 3 --output_dir checkpoint
 ```
 
 ### 🔥 推荐配置（Longformer）
 
 ```bash
-python scripts/qa/train.py \
-  --model_name allenai/longformer-base-4096 \
-  --model_type extractive \
-  --max_length 2048 \
-  --batch_size 4 \
-  --gradient_accumulation_steps 4 \
-  --num_epochs 3 \
-  --learning_rate 3e-5 \
-  --use_amp \
-  --patience 3
+python qa/scripts/train.py --model_name allenai/longformer-base-4096 --model_type extractive --max_length 2048 --batch_size 4 --gradient_accumulation_steps 4 --num_epochs 3 --learning_rate 3e-5 --use_amp --patience 3
 ```
 
 ### 💻 低资源配置（小显存/CPU）
@@ -195,7 +181,7 @@ python scripts/qa/train.py \
 
 ```bash
 python scripts/qa/train.py \
-  --resume_from_checkpoint checkpoint/qa/latest_model \
+  --resume_from_checkpoint checkpoint/latest_model \
   --num_epochs 2
 ```
 
@@ -223,8 +209,8 @@ python scripts/qa/train.py \
 
 ```bash
 python scripts/qa/inference.py \
-  --model_path checkpoint/qa/best_model \
-  --test_data data/qa/test.jsonl \
+  --model_path checkpoint/best_model \
+  --test_data data/test.jsonl \
   --output_file result/Emotion_QA_Result.jsonl \
   --model_type extractive
 ```
@@ -233,8 +219,8 @@ python scripts/qa/inference.py \
 
 ```bash
 python scripts/qa/inference.py \
-  --model_path checkpoint/qa/best_model \
-  --test_data data/qa/test.jsonl \
+  --model_path checkpoint/best_model \
+  --test_data data/test.jsonl \
   --output_file result/Emotion_QA_Result.jsonl \
   --model_type generative \
   --max_answer_length 256
@@ -265,7 +251,7 @@ head -n 3 result/Emotion_QA_Result.jsonl
 ```bash
 python scripts/qa/evaluate.py \
   --predictions result/Emotion_QA_Result.jsonl \
-  --ground_truth data/qa/test.jsonl \
+  --ground_truth data/test.jsonl \
   --output_dir evaluation/qa
 ```
 
@@ -480,13 +466,13 @@ python scripts/qa/train.py \
 
 # 3. 推理
 python scripts/qa/inference.py \
-  --model_path checkpoint/qa/best_model \
+  --model_path checkpoint/best_model \
   --model_type extractive
 
 # 4. 评估
 python scripts/qa/evaluate.py \
   --predictions result/Emotion_QA_Result.jsonl \
-  --ground_truth data/qa/test.jsonl
+  --ground_truth data/test.jsonl
 ```
 
 ### 方案 B：完整训练（2-4 小时）
@@ -512,14 +498,14 @@ python scripts/qa/train.py \
 
 # 3. 推理
 python scripts/qa/inference.py \
-  --model_path checkpoint/qa/best_model \
+  --model_path checkpoint/best_model \
   --model_type extractive \
   --max_length 2048
 
 # 4. 评估
 python scripts/qa/evaluate.py \
   --predictions result/Emotion_QA_Result.jsonl \
-  --ground_truth data/qa/test.jsonl
+  --ground_truth data/test.jsonl
 ```
 
 ### 方案 C：最佳性能（8+ 小时，需大 GPU）
@@ -545,7 +531,7 @@ python scripts/qa/train.py \
 
 # 3. 推理
 python scripts/qa/inference.py \
-  --model_path checkpoint/qa/best_model \
+  --model_path checkpoint/best_model \
   --model_type generative \
   --max_length 4096 \
   --max_answer_length 256
@@ -553,7 +539,7 @@ python scripts/qa/inference.py \
 # 4. 评估
 python scripts/qa/evaluate.py \
   --predictions result/Emotion_QA_Result.jsonl \
-  --ground_truth data/qa/test.jsonl
+  --ground_truth data/test.jsonl
 ```
 
 ---
@@ -567,7 +553,7 @@ import json
 import matplotlib.pyplot as plt
 
 # 加载训练历史
-with open('checkpoint/qa/training_history.json', 'r') as f:
+with open('checkpoint/training_history.json', 'r') as f:
     history = json.load(f)
 
 # 绘制损失曲线
@@ -618,3 +604,5 @@ plt.show()
 
 祝训练顺利！🎉
 
+
+python qa/scripts/train.py --model_name bert-base-chinese --model_type extractive --batch_size 2 --max_length 512 --gradient_accumulation_steps 8 --num_epochs 3 --learning_rate 2e-5 --use_amp --patience 3 --output_dir qa/checkpoint

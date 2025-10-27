@@ -20,7 +20,7 @@ from pathlib import Path
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from scripts.classification.classification import (
+from classification.scripts.classification import (
     EmotionClassifier,
     create_dataloaders
 )
@@ -348,9 +348,9 @@ def main():
     parser = argparse.ArgumentParser(description='情绪分类模型训练')
     
     # 数据参数
-    parser.add_argument('--train_data', type=str, default='data/classification/train.jsonl',
+    parser.add_argument('--train_data', type=str, default='../data/train.jsonl',
                         help='训练数据路径')
-    parser.add_argument('--val_data', type=str, default='data/classification/validation.jsonl',
+    parser.add_argument('--val_data', type=str, default='../data/validation.jsonl',
                         help='验证数据路径')
     
     # 模型参数
@@ -382,7 +382,7 @@ def main():
                         help='随机种子')
     
     # 输出参数
-    parser.add_argument('--output_dir', type=str, default='checkpoint/classification',
+    parser.add_argument('--output_dir', type=str, default='../checkpoint/classification',
                         help='模型输出目录')
     parser.add_argument('--resume_from_checkpoint', type=str, default=None,
                         help='从检查点恢复训练')

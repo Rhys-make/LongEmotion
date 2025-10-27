@@ -243,7 +243,7 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained("roberta-base")
     
     dataset = EmotionDataset(
-        "data/classification/train.jsonl",
+        "../data/train.jsonl",
         tokenizer,
         max_length=256
     )

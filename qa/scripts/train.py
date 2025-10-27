@@ -8,7 +8,8 @@ import sys
 import json
 import torch
 import torch.nn as nn
-from torch.cuda.amp import autocast, GradScaler
+from torch.amp import autocast
+from torch.cuda.amp import GradScaler
 from transformers import get_linear_schedule_with_warmup
 from torch.optim import AdamW
 from tqdm import tqdm
@@ -16,11 +17,14 @@ import numpy as np
 import logging
 import argparse
 from pathlib import Path
+import psutil
+import gc
+from datetime import datetime
 
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from scripts.qa.qa import (
+from qa.qa import (
     QAModel,
     create_dataloaders,
     calculate_f1
@@ -43,6 +47,38 @@ def set_seed(seed: int = 42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     logger.info(f"随机种子设置为: {seed}")
+
+
+def check_system_resources():
+    """检查系统资源"""
+    memory = psutil.virtual_memory()
+    logger.info(f"系统内存: {memory.used/1024**3:.1f}GB / {memory.total/1024**3:.1f}GB ({memory.percent:.1f}%)")
+    
+    if memory.percent > 85:
+        logger.warning(f"⚠️  系统内存使用率过高: {memory.percent:.1f}%")
+        logger.warning("建议关闭其他程序或减少batch_size")
+        return False
+    
+    if torch.cuda.is_available():
+        gpu_memory = torch.cuda.get_device_properties(0).total_memory
+        gpu_used = torch.cuda.memory_allocated(0)
+        gpu_free = gpu_memory - gpu_used
+        gpu_free_gb = gpu_free / 1024**3
+        
+        logger.info(f"GPU显存: {gpu_used/1024**3:.1f}GB / {gpu_memory/1024**3:.1f}GB (可用: {gpu_free_gb:.1f}GB)")
+        
+        if gpu_free_gb < 2.0:
+            logger.warning(f"⚠️  GPU显存不足: 仅剩{gpu_free_gb:.1f}GB")
+            return False
+    
+    return True
+
+
+def safe_cleanup():
+    """安全清理GPU缓存"""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
 
 
 class EarlyStopping:
@@ -88,14 +124,40 @@ def train_epoch_extractive(
     optimizer.zero_grad()
     
     for step, batch in enumerate(progress_bar):
-        input_ids = batch['input_ids'].to(device)
-        attention_mask = batch['attention_mask'].to(device)
-        start_positions = batch['start_positions'].to(device)
-        end_positions = batch['end_positions'].to(device)
+        # 每10个step检查一次内存
+        if step % 10 == 0:
+            memory = psutil.virtual_memory()
+            if memory.percent > 90:
+                logger.error(f"❌ 内存使用率过高: {memory.percent:.1f}%，停止训练")
+                raise RuntimeError("内存不足，训练停止")
         
-        # 前向传播
-        if use_amp and scaler is not None:
-            with autocast():
+        try:
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            start_positions = batch['start_positions'].to(device)
+            end_positions = batch['end_positions'].to(device)
+            
+            # 前向传播
+            if use_amp and scaler is not None:
+                with autocast('cuda'):
+                    outputs = model(
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        start_positions=start_positions,
+                        end_positions=end_positions
+                    )
+                    loss = outputs.loss / gradient_accumulation_steps
+                    
+                scaler.scale(loss).backward()
+                
+                if (step + 1) % gradient_accumulation_steps == 0:
+                    scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                    scaler.step(optimizer)
+                    scaler.update()
+                    scheduler.step()
+                    optimizer.zero_grad()
+            else:
                 outputs = model(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
@@ -103,38 +165,32 @@ def train_epoch_extractive(
                     end_positions=end_positions
                 )
                 loss = outputs.loss / gradient_accumulation_steps
+                loss.backward()
+                
+                if (step + 1) % gradient_accumulation_steps == 0:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                    optimizer.step()
+                    scheduler.step()
+                    optimizer.zero_grad()
             
-            scaler.scale(loss).backward()
+            total_loss += loss.item() * gradient_accumulation_steps
             
-            if (step + 1) % gradient_accumulation_steps == 0:
-                scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                scaler.step(optimizer)
-                scaler.update()
-                scheduler.step()
-                optimizer.zero_grad()
-        else:
-            outputs = model(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                start_positions=start_positions,
-                end_positions=end_positions
-            )
-            loss = outputs.loss / gradient_accumulation_steps
-            loss.backward()
+            progress_bar.set_postfix({
+                'loss': loss.item() * gradient_accumulation_steps,
+                'lr': scheduler.get_last_lr()[0]
+            })
             
-            if (step + 1) % gradient_accumulation_steps == 0:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                optimizer.step()
-                scheduler.step()
-                optimizer.zero_grad()
-        
-        total_loss += loss.item() * gradient_accumulation_steps
-        
-        progress_bar.set_postfix({
-            'loss': loss.item() * gradient_accumulation_steps,
-            'lr': scheduler.get_last_lr()[0]
-        })
+            # 每5个step清理一次GPU缓存
+            if step % 5 == 0:
+                safe_cleanup()
+                
+        except RuntimeError as e:
+            if "out of memory" in str(e).lower():
+                logger.error(f"❌ GPU显存不足: {e}")
+                safe_cleanup()
+                raise RuntimeError("GPU显存不足，请减少batch_size")
+            else:
+                raise e
     
     avg_loss = total_loss / len(train_loader)
     return avg_loss
@@ -164,7 +220,7 @@ def train_epoch_generative(
         
         # 前向传播
         if use_amp and scaler is not None:
-            with autocast():
+            with autocast('cuda'):
                 outputs = model(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
@@ -331,12 +387,27 @@ def train(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logger.info(f"使用设备: {device}")
     
+    # 检查系统资源
+    logger.info("检查系统资源...")
+    if not check_system_resources():
+        logger.error("❌ 系统资源不足，无法开始训练")
+        logger.info("建议:")
+        logger.info("  - 关闭其他程序释放内存")
+        logger.info("  - 减少batch_size (建议1-2)")
+        logger.info("  - 增加gradient_accumulation_steps (建议8-16)")
+        return
+    
     # 创建输出目录
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # 初始化模型
     logger.info(f"加载模型: {args.model_name}")
+    
+    # 设置离线模式
+    import os
+    os.environ['HF_HUB_OFFLINE'] = '1'
+    os.environ['TRANSFORMERS_OFFLINE'] = '1'
     
     qa_model = QAModel(
         model_name=args.model_name,
@@ -479,9 +550,9 @@ def main():
     parser = argparse.ArgumentParser(description='QA 模型训练')
     
     # 数据参数
-    parser.add_argument('--train_data', type=str, default='data/qa/train.jsonl',
+    parser.add_argument('--train_data', type=str, default='../data/train.jsonl',
                         help='训练数据路径')
-    parser.add_argument('--val_data', type=str, default='data/qa/validation.jsonl',
+    parser.add_argument('--val_data', type=str, default='../data/validation.jsonl',
                         help='验证数据路径')
     
     # 模型参数
@@ -494,17 +565,17 @@ def main():
                         help='最大序列长度')
     
     # 训练参数
-    parser.add_argument('--batch_size', type=int, default=8,
-                        help='批次大小')
-    parser.add_argument('--num_epochs', type=int, default=3,
+    parser.add_argument('--batch_size', type=int, default=2,
+                        help='批次大小 (移动GPU建议1-2)')
+    parser.add_argument('--num_epochs', type=int, default=2,
                         help='训练轮数')
-    parser.add_argument('--learning_rate', type=float, default=3e-5,
+    parser.add_argument('--learning_rate', type=float, default=2e-5,
                         help='学习率')
     parser.add_argument('--weight_decay', type=float, default=0.01,
                         help='权重衰减')
     parser.add_argument('--warmup_ratio', type=float, default=0.1,
                         help='预热比例')
-    parser.add_argument('--gradient_accumulation_steps', type=int, default=1,
+    parser.add_argument('--gradient_accumulation_steps', type=int, default=8,
                         help='梯度累积步数')
     
     # 优化参数
@@ -516,7 +587,7 @@ def main():
                         help='随机种子')
     
     # 输出参数
-    parser.add_argument('--output_dir', type=str, default='checkpoint/qa',
+    parser.add_argument('--output_dir', type=str, default='../checkpoint',
                         help='模型输出目录')
     parser.add_argument('--resume_from_checkpoint', type=str, default=None,
                         help='从检查点恢复训练')

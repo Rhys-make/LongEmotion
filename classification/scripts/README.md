@@ -53,10 +53,10 @@ python prepare_datasets.py
 
 ## 📂 输出文件
 
-脚本执行完成后，会在 `data/classification/` 目录下生成以下文件：
+脚本执行完成后，会在 `../data/` 目录下生成以下文件：
 
 ```
-data/classification/
+../data/
 ├── train.jsonl       # 训练集（来自 GoEmotions）
 ├── validation.jsonl  # 验证集（来自 GoEmotions）
 └── test.jsonl        # 测试集（来自 LongEmotion）
