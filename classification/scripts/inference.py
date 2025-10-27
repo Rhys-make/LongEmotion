@@ -239,9 +239,9 @@ def main():
     
     parser.add_argument('--model_path', type=str, required=True,
                         help='模型路径（例如: checkpoint/classification/best_model）')
-    parser.add_argument('--test_data', type=str, default='../data/test.jsonl',
+    parser.add_argument('--test_data', type=str, default='..classification/data/test.jsonl',
                         help='测试数据路径')
-    parser.add_argument('--output_path', type=str, default='../result/Emotion_Classification_Result.jsonl',
+    parser.add_argument('--output_path', type=str, default='..classification/result/Emotion_Classification_Result.jsonl',
                         help='输出文件路径')
     parser.add_argument('--max_length', type=int, default=512,
                         help='最大序列长度')

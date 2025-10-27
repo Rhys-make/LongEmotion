@@ -348,9 +348,9 @@ def main():
     parser = argparse.ArgumentParser(description='情绪分类模型训练')
     
     # 数据参数
-    parser.add_argument('--train_data', type=str, default='../data/train.jsonl',
+    parser.add_argument('--train_data', type=str, default='..classification/data/train.jsonl',
                         help='训练数据路径')
-    parser.add_argument('--val_data', type=str, default='../data/validation.jsonl',
+    parser.add_argument('--val_data', type=str, default='..classification/data/validation.jsonl',
                         help='验证数据路径')
     
     # 模型参数
