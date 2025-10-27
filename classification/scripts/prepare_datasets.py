@@ -470,7 +470,7 @@ def main():
         else:
             print(f"   ✗ {file} (未生成)")
     
-    print("\n💡 提示: 数据集已保存到 data/classification/ 目录")
+    print("\n💡 提示: 数据集已保存到 ../data/ 目录")
 
 
 if __name__ == "__main__":

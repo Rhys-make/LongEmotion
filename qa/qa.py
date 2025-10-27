@@ -72,16 +72,32 @@ class QADataset(Dataset):
             )
             
             # 找到答案在上下文中的位置
-            # 注意：这里简化处理，实际应该更精确地定位
+            # 使用更精确的答案定位方法
             answer_encoding = self.tokenizer(
                 answer,
                 add_special_tokens=False,
                 return_tensors='pt'
             )
             
-            # 简化：假设答案在开头
-            start_position = torch.tensor([1])
-            end_position = torch.tensor([min(len(answer_encoding['input_ids'][0]) + 1, self.max_length - 1)])
+            # 在上下文中搜索答案
+            answer_tokens = answer_encoding['input_ids'][0]
+            context_tokens = inputs['input_ids'][0]
+            
+            # 寻找答案在上下文中的位置
+            start_position = torch.tensor([0])
+            end_position = torch.tensor([0])
+            
+            # 在上下文中搜索答案token序列
+            for i in range(len(context_tokens) - len(answer_tokens) + 1):
+                if torch.equal(context_tokens[i:i+len(answer_tokens)], answer_tokens):
+                    start_position = torch.tensor([i])
+                    end_position = torch.tensor([i + len(answer_tokens) - 1])
+                    break
+            
+            # 如果没找到，使用默认位置
+            if start_position.item() == 0 and end_position.item() == 0:
+                start_position = torch.tensor([1])
+                end_position = torch.tensor([min(len(answer_tokens), self.max_length - 1)])
             
             return {
                 'input_ids': inputs['input_ids'].squeeze(0),
@@ -146,23 +162,30 @@ class QAModel:
         logger.info(f"模型类型：{model_type}")
         logger.info(f"设备：{self.device}")
         
+        # 设置离线模式
+        import os
+        os.environ['HF_HUB_OFFLINE'] = '1'
+        os.environ['TRANSFORMERS_OFFLINE'] = '1'
+        
         # 加载分词器
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
         
         # 确保有 pad token
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         
-        # 加载模型
+        # 加载模型 - 强制使用safetensors格式和离线模式
+        model_kwargs = {"use_safetensors": True, "local_files_only": True}
         if model_type == "extractive":
-            self.model = AutoModelForQuestionAnswering.from_pretrained(model_name)
+            self.model = AutoModelForQuestionAnswering.from_pretrained(model_name, **model_kwargs)
         elif model_type == "seq2seq":
-            self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+            self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name, **model_kwargs)
         else:  # generative (causal LM)
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name,
                 torch_dtype=torch.float16 if self.device == 'cuda' else torch.float32,
-                device_map='auto' if self.device == 'cuda' else None
+                device_map='auto' if self.device == 'cuda' else None,
+                **model_kwargs
             )
         
         if self.device != 'auto':

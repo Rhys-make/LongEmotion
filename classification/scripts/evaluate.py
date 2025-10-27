@@ -24,7 +24,7 @@ import seaborn as sns
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from scripts.classification.classification import EmotionDataset, EmotionClassifier
+from classification.scripts.classification import EmotionDataset, EmotionClassifier
 
 logging.basicConfig(
     level=logging.INFO,
@@ -249,7 +249,7 @@ def main():
     
     parser.add_argument('--model_path', type=str, required=True,
                         help='模型路径（例如: checkpoint/classification/best_model）')
-    parser.add_argument('--data_path', type=str, default='data/classification/validation.jsonl',
+    parser.add_argument('--data_path', type=str, default='../data/validation.jsonl',
                         help='评估数据路径')
     parser.add_argument('--batch_size', type=int, default=16,
                         help='批次大小')

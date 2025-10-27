@@ -17,7 +17,7 @@ import logging
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from scripts.classification.classification import EmotionClassifier
+from classification.scripts.classification import EmotionClassifier
 
 logging.basicConfig(
     level=logging.INFO,
@@ -239,9 +239,9 @@ def main():
     
     parser.add_argument('--model_path', type=str, required=True,
                         help='模型路径（例如: checkpoint/classification/best_model）')
-    parser.add_argument('--test_data', type=str, default='data/classification/test.jsonl',
+    parser.add_argument('--test_data', type=str, default='../data/test.jsonl',
                         help='测试数据路径')
-    parser.add_argument('--output_path', type=str, default='result/Emotion_Classification_Result.jsonl',
+    parser.add_argument('--output_path', type=str, default='../result/Emotion_Classification_Result.jsonl',
                         help='输出文件路径')
     parser.add_argument('--max_length', type=int, default=512,
                         help='最大序列长度')

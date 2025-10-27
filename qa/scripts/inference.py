@@ -20,7 +20,7 @@ from tqdm import tqdm
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from scripts.qa.qa import QAModel
+from qa.qa import QAModel
 
 logging.basicConfig(
     level=logging.INFO,
@@ -103,8 +103,8 @@ def main():
     parser = argparse.ArgumentParser(description='QA 模型推理')
     
     parser.add_argument('--model_path', type=str, required=True,
-                        help='模型路径（例如：checkpoint/qa/best_model）')
-    parser.add_argument('--test_data', type=str, default='data/qa/test.jsonl',
+                        help='模型路径（例如：checkpoint/best_model）')
+    parser.add_argument('--test_data', type=str, default='data/test.jsonl',
                         help='测试数据路径')
     parser.add_argument('--output_file', type=str, default='result/Emotion_QA_Result.jsonl',
                         help='输出文件路径')
@@ -131,7 +131,9 @@ def main():
     logger.info(f"使用设备: {device}")
     
     # 加载模型
-    logger.info(f"从 {args.model_path} 加载模型...")
+    # 获取完整路径用于日志显示
+    full_model_path = Path(args.model_path).resolve()
+    logger.info(f"从 {full_model_path} 加载模型...")
     
     # 首先尝试从模型目录推断模型名称
     try:

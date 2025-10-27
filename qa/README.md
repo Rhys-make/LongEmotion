@@ -51,9 +51,9 @@ python scripts/qa/prepare_datasets.py
 ```
 
 这会生成：
-- `data/qa/train.jsonl` - 训练集（来自多个长上下文 QA 数据集）
-- `data/qa/validation.jsonl` - 验证集
-- `data/qa/test.jsonl` - 测试集（来自 LongEmotion）
+- `data/train.jsonl` - 训练集（来自多个长上下文 QA 数据集）
+- `data/validation.jsonl` - 验证集
+- `data/test.jsonl` - 测试集（来自 LongEmotion）
 
 ### 2. 训练模型
 
@@ -82,8 +82,8 @@ python scripts/qa/train.py \
 ```bash
 # 对测试集进行预测
 python scripts/qa/inference.py \
-  --model_path checkpoint/qa/best_model \
-  --test_data data/qa/test.jsonl \
+  --model_path checkpoint/best_model \
+  --test_data data/test.jsonl \
   --output_file result/Emotion_QA_Result.jsonl
 ```
 
@@ -93,7 +93,7 @@ python scripts/qa/inference.py \
 # 评估模型性能（需要有标注答案）
 python scripts/qa/evaluate.py \
   --predictions result/Emotion_QA_Result.jsonl \
-  --ground_truth data/qa/test.jsonl \
+  --ground_truth data/test.jsonl \
   --output_dir evaluation/qa
 ```
 

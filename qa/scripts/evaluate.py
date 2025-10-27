@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from scripts.qa.qa import calculate_f1
+from qa.qa import calculate_f1
 
 logging.basicConfig(
     level=logging.INFO,
