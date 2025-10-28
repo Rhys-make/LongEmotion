@@ -104,9 +104,9 @@ def main():
     
     parser.add_argument('--model_path', type=str, required=True,
                         help='模型路径（例如：checkpoint/best_model）')
-    parser.add_argument('--test_data', type=str, default='data/test.jsonl',
+    parser.add_argument('--test_data', type=str, default='../qa/data/test.jsonl',
                         help='测试数据路径')
-    parser.add_argument('--output_file', type=str, default='result/Emotion_QA_Result.jsonl',
+    parser.add_argument('--output_file', type=str, default='../qa/result/Emotion_QA_Result.jsonl',
                         help='输出文件路径')
     parser.add_argument('--model_type', type=str, default='extractive',
                         choices=['extractive', 'generative', 'seq2seq'],
