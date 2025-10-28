@@ -209,12 +209,12 @@ def download_and_process_go_emotions():
     
     # 处理训练集
     train_data = convert_go_emotions_to_format(ds["train"], "train", choices)
-    train_path = project_root / "data" / "classification" / "train.jsonl"
+    train_path = project_root / "classification" / "data" / "train.jsonl"
     save_to_jsonl(train_data, str(train_path))
     
     # 处理验证集
     val_data = convert_go_emotions_to_format(ds["validation"], "validation", choices)
-    val_path = project_root / "data" / "classification" / "validation.jsonl"
+    val_path = project_root / "classification" / "data" / "validation.jsonl"
     save_to_jsonl(val_data, str(val_path))
     
     return choices
@@ -252,7 +252,7 @@ def download_and_process_long_emotion():
                     example = json.loads(line)
                     test_data.append(example)
         
-        test_path = project_root / "data" / "classification" / "test.jsonl"
+        test_path = project_root / "classification" / "data" / "test.jsonl"
         save_to_jsonl(test_data, str(test_path))
         
         print(f"✅ test 转换完成，共 {len(test_data)} 条数据")
@@ -274,7 +274,7 @@ def download_and_process_long_emotion():
             project_root = Path(__file__).parent.parent.parent
             test_data = list(ds["test"])
             
-            test_path = project_root / "data" / "classification" / "test.jsonl"
+            test_path = project_root / "classification" / "data" / "test.jsonl"
             save_to_jsonl(test_data, str(test_path))
             
             print(f"✅ test 转换完成，共 {len(test_data)} 条数据")
@@ -459,7 +459,7 @@ def main():
     
     # 显示生成的文件
     project_root = Path(__file__).parent.parent.parent
-    data_dir = project_root / "data" / "classification"
+    data_dir = project_root / "classification" / "data"
     
     print("📁 生成的文件:")
     for file in ["train.jsonl", "validation.jsonl", "test.jsonl"]:
