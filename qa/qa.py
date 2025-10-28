@@ -164,8 +164,8 @@ class QAModel:
         
         # 设置离线模式
         import os
-        os.environ['HF_HUB_OFFLINE'] = '1'
-        os.environ['TRANSFORMERS_OFFLINE'] = '1'
+        os.environ['HF_HUB_OFFLINE'] = '0'
+        os.environ['TRANSFORMERS_OFFLINE'] = '0'
         
         # 加载分词器
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=False)
@@ -176,7 +176,7 @@ class QAModel:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         
         # 加载模型 - 强制使用safetensors格式和离线模式
-        model_kwargs = {"use_safetensors": True, "local_files_only": True}
+        model_kwargs = {"use_safetensors": True, "local_files_only": False}
         if model_type == "extractive":
             self.model = AutoModelForQuestionAnswering.from_pretrained(model_name, **model_kwargs)
         elif model_type == "seq2seq":
