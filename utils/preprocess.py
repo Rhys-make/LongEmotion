@@ -38,7 +38,7 @@ class TextPreprocessor:
         text = re.sub(r'\s+', ' ', text)
         
         # 去除特殊字符（保留中文、英文、数字和常用标点）
-        text = re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9，。！？、；：""''（）《》\s]', '', text)
+        text = re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9，。！？、；：""''（）《》\\s]', '', text)
         
         # 去除首尾空格
         text = text.strip()
