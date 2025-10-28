@@ -168,7 +168,8 @@ class QAModel:
         os.environ['TRANSFORMERS_OFFLINE'] = '1'
         
         # 加载分词器
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=False)
+
         
         # 确保有 pad token
         if self.tokenizer.pad_token is None:
