@@ -235,17 +235,22 @@ class QAModel:
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=self.offline)
         except Exception as e:
-            logger.warning(f"分词器在线加载失败，尝试本地快照回退: {e}")
+            logger.warning(f"分词器在线加载失败，尝试本地路径或快照回退: {e}")
+            from pathlib import Path
+            model_path = Path(model_name)
             try:
-                from huggingface_hub import snapshot_download
-                local_snapshot = snapshot_download(
-                    repo_id=model_name,
-                    repo_type='model',
-                    ignore_patterns=['additional_chat_templates*']
-                )
-                self.tokenizer = AutoTokenizer.from_pretrained(local_snapshot, local_files_only=True)
-                # 在线模式保持开启（仅该次加载走本地）
-                logger.info(f"分词器已通过本地快照加载: {local_snapshot}")
+                if model_path.exists():
+                    self.tokenizer = AutoTokenizer.from_pretrained(str(model_path), local_files_only=True)
+                    logger.info(f"分词器已通过本地路径加载: {model_path}")
+                else:
+                    from huggingface_hub import snapshot_download
+                    local_snapshot = snapshot_download(
+                        repo_id=model_name,
+                        repo_type='model',
+                        ignore_patterns=['additional_chat_templates*']
+                    )
+                    self.tokenizer = AutoTokenizer.from_pretrained(local_snapshot, local_files_only=True)
+                    logger.info(f"分词器已通过本地快照加载: {local_snapshot}")
             except Exception as e2:
                 raise e2
 
@@ -272,17 +277,23 @@ class QAModel:
         try:
             self.model = _load_model_from(model_name)
         except Exception as e:
-            logger.warning(f"模型在线加载失败，尝试本地快照回退: {e}")
-            from huggingface_hub import snapshot_download
-            local_snapshot = snapshot_download(
-                repo_id=model_name,
-                repo_type='model',
-                ignore_patterns=['additional_chat_templates*']
-            )
-            # 回退时强制本地加载
-            model_kwargs["local_files_only"] = True
-            self.model = _load_model_from(local_snapshot)
-            logger.info(f"模型已通过本地快照加载: {local_snapshot}")
+            logger.warning(f"模型在线加载失败，尝试本地路径或快照回退: {e}")
+            from pathlib import Path
+            model_path = Path(model_name)
+            if model_path.exists():
+                model_kwargs["local_files_only"] = True
+                self.model = _load_model_from(str(model_path))
+                logger.info(f"模型已通过本地路径加载: {model_path}")
+            else:
+                from huggingface_hub import snapshot_download
+                local_snapshot = snapshot_download(
+                    repo_id=model_name,
+                    repo_type='model',
+                    ignore_patterns=['additional_chat_templates*']
+                )
+                model_kwargs["local_files_only"] = True
+                self.model = _load_model_from(local_snapshot)
+                logger.info(f"模型已通过本地快照加载: {local_snapshot}")
         
         if self.device != 'auto':
             self.model.to(self.device)
