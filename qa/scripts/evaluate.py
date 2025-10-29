@@ -225,11 +225,11 @@ def save_evaluation_report(
 def main():
     parser = argparse.ArgumentParser(description='评估 QA 模型')
     
-    parser.add_argument('--predictions', type=str, default='../qa/result/Emotion_QA_Result.jsonl',
+    parser.add_argument('--predictions', type=str, default='../Emotion_QA_Result.jsonl',
                         help='预测结果文件路径（JSONL 格式）')
-    parser.add_argument('--ground_truth', type=str, default='../qa/data/test.jsonl',
+    parser.add_argument('--ground_truth', type=str, default='../data/test.jsonl',
                         help='标准答案文件路径（JSONL 格式）')
-    parser.add_argument('--output_dir', type=str, default='../qa/evaluation',
+    parser.add_argument('--output_dir', type=str, default='../evaluation',
                         help='评估结果输出目录')
     
     args = parser.parse_args()
