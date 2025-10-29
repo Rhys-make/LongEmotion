@@ -102,8 +102,8 @@ def save_predictions(predictions: list, output_path: str):
 def main():
     parser = argparse.ArgumentParser(description='QA 模型推理')
     
-    parser.add_argument('--model_path', type=str, required=True,
-                        help='模型路径（例如：checkpoint/best_model）')
+    parser.add_argument('--model_path', type=str, default='../qa/best_model',
+                        help='模型路径（默认：../qa/best_model）')
     parser.add_argument('--test_data', type=str, default='../qa/data/test.jsonl',
                         help='测试数据路径')
     parser.add_argument('--output_file', type=str, default='../qa/result/Emotion_QA_Result.jsonl',
@@ -113,6 +113,8 @@ def main():
                         help='模型类型')
     parser.add_argument('--max_length', type=int, default=512,
                         help='最大序列长度')
+    parser.add_argument('--doc_stride', type=int, default=128,
+                        help='长上下文滑窗重叠步长')
     parser.add_argument('--max_answer_length', type=int, default=256,
                         help='最大答案长度')
     parser.add_argument('--batch_size', type=int, default=8,
@@ -130,30 +132,44 @@ def main():
     
     logger.info(f"使用设备: {device}")
     
-    # 加载模型
-    # 获取完整路径用于日志显示
-    full_model_path = Path(args.model_path).resolve()
-    logger.info(f"从 {full_model_path} 加载模型...")
+    # 加载模型（稳健路径解析：qa/ 为基准 -> CWD -> 绝对路径）
+    raw_path = Path(args.model_path)
+    module_root = Path(__file__).parent.parent  # qa/
+    candidates = []
+    if raw_path.is_absolute():
+        candidates.append(raw_path)
+    else:
+        candidates.append((module_root / raw_path).resolve())
+        candidates.append((Path.cwd() / raw_path).resolve())
     
-    # 首先尝试从模型目录推断模型名称
-    try:
-        # 读取 config.json 获取模型信息
-        config_path = Path(args.model_path) / 'config.json'
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-        model_name = config.get('_name_or_path', args.model_path)
-    except:
-        model_name = args.model_path
+    resolved_model_path = None
+    for p in candidates:
+        if p.exists():
+            resolved_model_path = p
+            break
+    if resolved_model_path is None:
+        # 最后再试原始绝对化
+        p = raw_path.resolve()
+        if p.exists():
+            resolved_model_path = p
+        else:
+            raise FileNotFoundError(
+                f"未找到模型目录，请检查 --model_path。尝试路径: "
+                f"{[str(c) for c in candidates + [p]]}")
+    
+    logger.info(f"从 {resolved_model_path} 加载模型...")
+    model_name = str(resolved_model_path)
     
     qa_model = QAModel(
         model_name=model_name,
         model_type=args.model_type,
         max_length=args.max_length,
-        device=device
+        device=device,
+        doc_stride=args.doc_stride
     )
     
-    # 加载训练好的权重
-    qa_model.load(args.model_path)
+    # 加载训练好的权重（使用解析后的绝对路径）
+    qa_model.load(str(resolved_model_path))
     
     logger.info("模型加载完成")
     
