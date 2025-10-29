@@ -201,7 +201,8 @@ class QAModel:
         model_type: str = "extractive",
         max_length: int = 512,
         device: str = None,
-        doc_stride: int = 128
+        doc_stride: int = 128,
+        offline: bool = False
     ):
         """
         Args:
@@ -215,26 +216,31 @@ class QAModel:
         self.max_length = max_length
         self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
         self.doc_stride = doc_stride
+        self.offline = offline
         
         logger.info(f"初始化 QA 模型：{model_name}")
         logger.info(f"模型类型：{model_type}")
         logger.info(f"设备：{self.device}")
         
-        # 设置离线模式（仅本地加载）
+        # 设置离线/在线模式
         import os
-        os.environ['HF_HUB_OFFLINE'] = '1'
-        os.environ['TRANSFORMERS_OFFLINE'] = '1'
+        if self.offline:
+            os.environ['HF_HUB_OFFLINE'] = '1'
+            os.environ['TRANSFORMERS_OFFLINE'] = '1'
+        else:
+            os.environ.pop('HF_HUB_OFFLINE', None)
+            os.environ.pop('TRANSFORMERS_OFFLINE', None)
         
-        # 加载分词器（仅本地）
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
+        # 加载分词器（根据 offline 决定是否仅本地）
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=self.offline)
 
         
         # 确保有 pad token
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         
-        # 加载模型 - 强制使用safetensors格式并仅本地
-        model_kwargs = {"use_safetensors": True, "local_files_only": True}
+        # 加载模型 - 允许在线下载且不强制 safetensors
+        model_kwargs = {"use_safetensors": False, "local_files_only": self.offline}
         if model_type == "extractive":
             self.model = AutoModelForQuestionAnswering.from_pretrained(model_name, **model_kwargs)
         elif model_type == "seq2seq":
@@ -277,21 +283,21 @@ class QAModel:
         local_dir = str(Path(model_dir).resolve())
         
         if self.model_type == "extractive":
-            self.model = AutoModelForQuestionAnswering.from_pretrained(local_dir, local_files_only=True)
+            self.model = AutoModelForQuestionAnswering.from_pretrained(local_dir, local_files_only=self.offline)
         elif self.model_type == "seq2seq":
-            self.model = AutoModelForSeq2SeqLM.from_pretrained(local_dir, local_files_only=True)
+            self.model = AutoModelForSeq2SeqLM.from_pretrained(local_dir, local_files_only=self.offline)
         else:
             self.model = AutoModelForCausalLM.from_pretrained(
                 local_dir,
                 torch_dtype=torch.float16 if self.device == 'cuda' else torch.float32,
                 device_map='auto' if self.device == 'cuda' else None,
-                local_files_only=True
+                local_files_only=self.offline
             )
         
         if self.device != 'auto':
             self.model.to(self.device)
         
-        self.tokenizer = AutoTokenizer.from_pretrained(local_dir, local_files_only=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(local_dir, local_files_only=self.offline)
     
     def predict(
         self,
@@ -384,6 +390,14 @@ class QAModel:
                     truncation=True,
                     return_tensors='pt'
                 ).to(self.device)
+
+                # 对 LED 增设全局注意力（将第一个 token 设为全局）
+                model_name_lower = (self.model_name or "").lower()
+                if "led" in model_name_lower and "global_attention_mask" not in inputs:
+                    input_ids = inputs["input_ids"]
+                    global_attention_mask = torch.zeros_like(input_ids)
+                    global_attention_mask[:, 0] = 1
+                    inputs["global_attention_mask"] = global_attention_mask
                 
                 outputs = self.model.generate(
                     **inputs,

@@ -418,7 +418,8 @@ def train(args):
         model_type=args.model_type,
         max_length=args.max_length,
         device=device,
-        doc_stride=args.doc_stride
+        doc_stride=args.doc_stride,
+        offline=args.offline
     )
     
     model = qa_model.get_model()
@@ -556,20 +557,20 @@ def main():
     parser = argparse.ArgumentParser(description='QA 模型训练')
     
     # 数据参数
-    parser.add_argument('--train_data', type=str, default='../qa/data/train.jsonl',
+    parser.add_argument('--train_data', type=str, default='../data/train.jsonl',
                         help='训练数据路径')
-    parser.add_argument('--val_data', type=str, default='../qa/data/validation.jsonl',
+    parser.add_argument('--val_data', type=str, default='../data/val.jsonl',
                         help='验证数据路径')
     
     # 模型参数
-    parser.add_argument('--model_name', type=str, default='bert-base-uncased',
+    parser.add_argument('--model_name', type=str, default='allenai/led-base-16384',
                         help='预训练模型名称')
-    parser.add_argument('--model_type', type=str, default='extractive',
+    parser.add_argument('--model_type', type=str, default='seq2seq',
                         choices=['extractive', 'generative', 'seq2seq'],
                         help='模型类型')
-    parser.add_argument('--max_length', type=int, default=512,
+    parser.add_argument('--max_length', type=int, default=4096,
                         help='最大序列长度')
-    parser.add_argument('--doc_stride', type=int, default=128,
+    parser.add_argument('--doc_stride', type=int, default=512,
                         help='长上下文滑窗重叠步长')
     
     # 训练参数
@@ -604,7 +605,7 @@ def main():
     parser.add_argument('--num_workers', type=int, default=0,
                         help='数据加载线程数')
     parser.add_argument('--offline', action='store_true',
-                        help='仅本地加载（默认开启，若需从HuggingFace下载请移除该标志）')
+                        help='仅本地加载（加此开关表示不访问网络）')
     
     args = parser.parse_args()
     

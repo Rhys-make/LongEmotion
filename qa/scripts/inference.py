@@ -102,18 +102,18 @@ def save_predictions(predictions: list, output_path: str):
 def main():
     parser = argparse.ArgumentParser(description='QA 模型推理')
     
-    parser.add_argument('--model_path', type=str, default='../qa/best_model',
-                        help='模型路径（默认：../qa/best_model）')
-    parser.add_argument('--test_data', type=str, default='../qa/data/test.jsonl',
+    parser.add_argument('--model_path', type=str, default='../checkpoint/best_model',
+                        help='模型路径（默认：../checkpoint/best_model）')
+    parser.add_argument('--test_data', type=str, default='../data/test.jsonl',
                         help='测试数据路径')
-    parser.add_argument('--output_file', type=str, default='../qa/result/Emotion_QA_Result.jsonl',
-                        help='输出文件路径')
-    parser.add_argument('--model_type', type=str, default='extractive',
-                        choices=['extractive', 'generative', 'seq2seq'],
-                        help='模型类型')
-    parser.add_argument('--max_length', type=int, default=512,
+    parser.add_argument('--output_file', type=str, default='../Emotion_QA_Result.jsonl',
+                        help='输出文件路径（默认保存在 qa 根目录）')
+    parser.add_argument('--model_type', type=str, default='seq2seq',
+        choices=['extractive', 'generative', 'seq2seq'],
+        help='模型类型')
+    parser.add_argument('--max_length', type=int, default=4096,
                         help='最大序列长度')
-    parser.add_argument('--doc_stride', type=int, default=128,
+    parser.add_argument('--doc_stride', type=int, default=512,
                         help='长上下文滑窗重叠步长')
     parser.add_argument('--max_answer_length', type=int, default=256,
                         help='最大答案长度')

@@ -469,7 +469,7 @@ def main():
     
     # 4. 保存
     train_path = output_dir / 'train.jsonl'
-    val_path = output_dir / 'validation.jsonl'
+    val_path = output_dir / 'val.jsonl'
     
     save_jsonl(train_samples, train_path)
     save_jsonl(val_samples, val_path)
