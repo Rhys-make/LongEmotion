@@ -404,16 +404,21 @@ def train(args):
     # 初始化模型
     logger.info(f"加载模型: {args.model_name}")
     
-    # 设置离线模式
+    # 根据参数设置离线/在线模式
     import os
-    os.environ['HF_HUB_OFFLINE'] = '1'
-    os.environ['TRANSFORMERS_OFFLINE'] = '1'
+    if args.offline:
+        os.environ['HF_HUB_OFFLINE'] = '1'
+        os.environ['TRANSFORMERS_OFFLINE'] = '1'
+    else:
+        os.environ.pop('HF_HUB_OFFLINE', None)
+        os.environ.pop('TRANSFORMERS_OFFLINE', None)
     
     qa_model = QAModel(
         model_name=args.model_name,
         model_type=args.model_type,
         max_length=args.max_length,
-        device=device
+        device=device,
+        doc_stride=args.doc_stride
     )
     
     model = qa_model.get_model()
@@ -433,7 +438,8 @@ def train(args):
         batch_size=args.batch_size,
         max_length=args.max_length,
         model_type=args.model_type,
-        num_workers=args.num_workers
+        num_workers=args.num_workers,
+        doc_stride=args.doc_stride
     )
     
     logger.info(f"训练样本: {len(train_loader.dataset)}")
@@ -563,6 +569,8 @@ def main():
                         help='模型类型')
     parser.add_argument('--max_length', type=int, default=512,
                         help='最大序列长度')
+    parser.add_argument('--doc_stride', type=int, default=128,
+                        help='长上下文滑窗重叠步长')
     
     # 训练参数
     parser.add_argument('--batch_size', type=int, default=2,
@@ -595,6 +603,8 @@ def main():
     # 其他参数
     parser.add_argument('--num_workers', type=int, default=0,
                         help='数据加载线程数')
+    parser.add_argument('--offline', action='store_true',
+                        help='仅本地加载（默认开启，若需从HuggingFace下载请移除该标志）')
     
     args = parser.parse_args()
     

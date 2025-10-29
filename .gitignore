@@ -131,5 +131,25 @@ desktop.ini
 # 保留脚本
 !*.py
 
+# Project-specific outputs (QA)
+qa/result/
+qa/evaluation/
+qa/best_model/
+qa/latest_model/
+qa/checkpoint/
+qa_longformer/
+qa_bert/
+
+# Project-specific outputs (Classification)
+classification/result/
+
+# Large model artifacts
+*.safetensors
+*.bin
+*.onnx
+
+# Experiment tracking
+wandb/
+=======
 # 保留空的 __init__.py
 !__init__.py
