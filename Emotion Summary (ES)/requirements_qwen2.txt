@@ -1,0 +1,27 @@
+# Qwen2-7B-Instruct 微调所需依赖
+
+# 核心依赖
+torch>=2.0.0
+transformers>=4.37.0
+datasets>=2.14.0
+accelerate>=0.25.0
+peft>=0.7.0
+
+# 量化支持
+bitsandbytes>=0.41.0
+scipy>=1.10.0
+
+# 训练工具
+tensorboard
+wandb  # 可选：用于实验追踪
+
+# 评估工具
+rouge-score
+nltk
+jieba  # 中文分词
+
+# 其他工具
+tqdm
+numpy
+pandas
+

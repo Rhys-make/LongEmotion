@@ -1,0 +1,68 @@
+# 数据文件 - 完全忽略
+data/
+
+# 模型文件 - 通常很大，不上传
+model/
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+*.pt
+
+# 结果文件 - 推理输出
+results/
+
+# AI 批处理结果
+ai_results_batch*.json
+remaining_samples_info.json
+
+# 日志文件
+logs/
+*.log
+train_log.txt
+
+# 临时文件
+temp_*.parquet
+temp_psyqa/
+temp_psyqa_repo/
+
+# Python 虚拟环境
+venv/
+env/
+.venv/
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 提交文件夹（可能包含大文件）
+submission/
+
+# IDE 和编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# 环境变量文件
+.env
+.env.local
+
+# 大型数据文件格式
+*.parquet
+*.csv
+*.jsonl
+*.arrow
+
+# Hugging Face 缓存
+.cache/
+wandb/
