@@ -1,0 +1,9 @@
+openai:
+  key: <<Your openai API key>>
+
+llama2:
+  host: http://<<Server IP or URL>>/v1
+
+llama3:
+  host: http://<<Server IP or URL>>/v1
+

@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Config (包含敏感信息)
+conf.d/config.yaml
+
+# Output
+output/
+*.log
+
+# Data
+data/*.json
+!data/*.json.example
+
+# 忽略 models/model 目录下的所有文件
+models/model/*
+
+# 若需忽略该目录下的子目录（如果有的话，此处示例中未体现，但可补充）
+# models/model/**/*

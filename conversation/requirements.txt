@@ -1,0 +1,20 @@
+# LongEmotion 对话项目依赖包
+# 核心依赖
+langchain>=0.1.0
+langchain-openai>=0.0.5
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# OpenAI API（用于ChatGPT）
+openai>=1.0.0
+
+# Hugging Face 数据集和模型
+datasets>=2.14.0
+huggingface-hub>=0.19.0
+transformers>=4.35.0
+peft>=0.8.0  # 用于加载 LoRA 适配器
+
+# 可选：如果需要本地运行LLM
+torch>=2.0.0  # 用于运行 LongEmotion 模型
+# vllm>=0.2.0  # 用于运行Llama模型
+
